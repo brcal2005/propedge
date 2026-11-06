@@ -12,7 +12,7 @@ import csv
 import json
 from dataclasses import dataclass
 
-from .dist import CountDist, fit_mean
+from .dist import CountDist, fit_mean, fit_mean_phi
 from .markets import norm_name, phi_prior
 from .odds import devig, expected_value, kelly_fraction, parse_odds
 
@@ -46,6 +46,7 @@ class Opportunity:
     model_p: float | None = None
     model_ev: float | None = None
     model_mean: float | None = None
+    exact_line: bool = True   # False = fair price had to be translated from a different line
 
 
 def quotes_from_odds_api(events: list[dict]) -> list[Quote]:
@@ -116,7 +117,9 @@ def analyze(quotes: list[Quote], sport: str | None = None, sharp_books=DEFAULT_S
         books = {o[0] for o in basis}
         if not has_sharp and len(books) < min_books:
             continue
-        phi = phi_prior(market, sport)
+        # Shape (dispersion) comes from every book's ladder of lines; location (mean) from the
+        # sharp book(s). Soft books are fine for shape even when their mean is off.
+        phi = fit_mean_phi([(l, p, w) for _, l, p, w in obs_all], phi_prior(market, sport))
 
         fair_cache: dict[str, float | None] = {}
 
@@ -154,7 +157,8 @@ def analyze(quotes: list[Quote], sport: str | None = None, sharp_books=DEFAULT_S
             p = over if q.side == "over" else under
             ev = expected_value(p, q.price, push)
             opp_ = Opportunity(q, p, push, ev, kelly_fraction(p, q.price, push), m,
-                               len(books - {q.book}), has_sharp and not consensus)
+                               len(books - {q.book}), has_sharp and not consensus,
+                               exact_line=any(b != q.book and l == q.line for b, l, *_ in basis))
             if proj is not None:
                 mo, mu, mp = proj.probs(q.line)
                 pm = mo if q.side == "over" else mu

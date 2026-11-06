@@ -67,6 +67,8 @@ def cmd_scan(a):
     if not a.all_prices:
         opps = best_prices_only(opps)
     opps = [o for o in opps if o.ev >= a.min_ev and o.ev <= a.max_ev]
+    if a.exact_lines:
+        opps = [o for o in opps if o.exact_line]
     if a.require_model:
         opps = [o for o in opps if o.model_ev is not None and o.model_ev > 0]
     opps = opps[: a.limit]
@@ -80,12 +82,13 @@ def cmd_scan(a):
                      q.book, fmt_american(q.price), f"{prob_to_american(fair_cond):+d}",
                      f"{o.fair_p * 100:.1f}%", pct(o.ev), f"${stake:,.0f}",
                      f"{o.market_mean:.1f}", "" if o.model_mean is None else f"{o.model_mean:.1f}",
-                     pct(o.model_ev), "Y" if o.sharp_used else "", q.event[:28]])
+                     pct(o.model_ev), "Y" if o.sharp_used else "", "" if o.exact_line else "~", q.event[:28]])
     hdr = ["Player", "Mkt", "Bet", "Book", "Price", "Fair", "WinP", "EV", "Stake",
-           "MktProj", "ModelProj", "ModelEV", "Sharp", "Event"]
+           "MktProj", "ModelProj", "ModelEV", "Sharp", "Alt", "Event"]
     print(table(rows, hdr) if rows else f"No bets with EV >= {a.min_ev:.1%}.")
     print(f"\n{len(quotes)} quotes scanned. Stake = {a.kelly:g} Kelly on ${a.bankroll:,.0f}, "
-          f"capped at {a.max_stake:.0%}. Fair = no-vig sharp price when available (Sharp=Y), else consensus.")
+          f"capped at {a.max_stake:.0%}. Fair = no-vig sharp price when available (Sharp=Y), else consensus.\n"
+          f"Alt=~ means the sharp book posted a different line and the fair price was translated — less reliable.")
     if a.csv:
         with open(a.csv, "w", newline="") as f:
             w = csv.writer(f); w.writerow(hdr); w.writerows(rows)
@@ -215,7 +218,7 @@ def cmd_demo(a):
     print("\n" + "=" * 78 + "\n2) SCAN — today's slate: soft books vs no-vig sharp price\n" + "=" * 78)
     cmd_scan(argparse.Namespace(file=paths["quotes"], logs=paths["logs"], sport="basketball_nba",
                                 sharp=None, min_books=2, devig="power", sharp_only=False, books=None,
-                                all_prices=False, min_ev=0.03, max_ev=0.3, require_model=False,
+                                all_prices=False, exact_lines=False, min_ev=0.03, max_ev=0.3, require_model=False,
                                 limit=15, kelly=0.25, max_stake=0.03, bankroll=1000, csv=None))
     print("\nTry next:")
     print(f"  python -m propedge project --logs {paths['logs']} --player \"<name from above>\" --market pra")
@@ -238,6 +241,7 @@ def main(argv=None):
     s.add_argument("--save", help="save fetched raw JSON for re-use")
     s.add_argument("--logs", help="game log CSV to add model projections")
     s.add_argument("--require-model", action="store_true", help="only show bets the model also likes")
+    s.add_argument("--exact-lines", action="store_true", help="skip bets whose fair price was translated from a different line")
     s.add_argument("--books", help="only show bets at these books (the ones you have accounts at)")
     s.add_argument("--sharp", help=f"comma list of sharp books (default {','.join(sorted(DEFAULT_SHARP))})")
     s.add_argument("--sharp-only", action="store_true", help="fair price from sharp books only")
