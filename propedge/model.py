@@ -60,7 +60,7 @@ class GameLogs:
                 r: dict = {}
                 for k, v in raw.items():
                     k = k.strip().lower()
-                    if k in ("player", "date", "team", "opponent", "opp"):
+                    if k in ("player", "date", "team", "opponent", "opp", "athlete_id", "pos"):
                         r["opponent" if k == "opp" else k] = (v or "").strip()
                     else:
                         try:

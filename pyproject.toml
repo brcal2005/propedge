@@ -14,3 +14,6 @@ propedge = "propedge.cli:main"
 
 [tool.setuptools]
 packages = ["propedge"]
+
+[tool.setuptools.package-data]
+propedge = ["static/*.html"]

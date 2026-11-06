@@ -28,7 +28,7 @@ KEYMAP = {
     "steals": "stl", "blocks": "blk", "turnovers": "tov",
     "offensiveRebounds": "oreb", "defensiveRebounds": "dreb",
 }
-FIELDS = ["player", "date", "team", "opponent", "minutes", "pts", "reb", "ast", "fg3m", "fg3a",
+FIELDS = ["player", "date", "team", "opponent", "athlete_id", "pos", "minutes", "pts", "reb", "ast", "fg3m", "fg3a",
           "fgm", "fga", "ftm", "fta", "stl", "blk", "tov", "oreb", "dreb"]
 
 
@@ -62,8 +62,11 @@ def parse_boxscore(summary: dict, date: str) -> list[dict]:
                 stats = a.get("stats") or []
                 if a.get("didNotPlay") or len(stats) != len(keys):
                     continue
-                row = {"player": a["athlete"]["displayName"], "date": date,
-                       "team": names[i], "opponent": names[1 - i]}
+                ath = a["athlete"]
+                row = {"player": ath["displayName"], "date": date,
+                       "team": names[i], "opponent": names[1 - i],
+                       "athlete_id": ath.get("id", ""),
+                       "pos": (ath.get("position") or {}).get("abbreviation", "")}
                 for k, v in zip(keys, stats):
                     if k in KEYMAP:
                         try:

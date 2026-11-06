@@ -5,6 +5,7 @@
   propedge backtest  walk-forward test of the model vs historical lines
   propedge fair      de-vig a two-way price
   propedge fetch-logs download NBA/WNBA game logs from ESPN
+  propedge web       dashboard in your browser
   propedge bet       track bets, closing line value and ROI
   propedge demo      generate synthetic data and run everything
 """
@@ -249,6 +250,11 @@ def cmd_fetch_logs(a):
     print(f"wrote {len(rows)} player-games ({len({r['player'] for r in rows})} players) to {a.out}")
 
 
+def cmd_web(a):
+    from .web import serve
+    serve(a.port, open_browser=not a.no_browser)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="propedge", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -335,6 +341,11 @@ def main(argv=None):
     s.add_argument("--end", help="YYYY-MM-DD (default: yesterday)")
     s.add_argument("--out", default="nba_logs.csv")
     s.set_defaults(func=cmd_fetch_logs)
+
+    s = sub.add_parser("web", help="open the dashboard in your browser (http://localhost:8000)")
+    s.add_argument("--port", type=int, default=8000)
+    s.add_argument("--no-browser", action="store_true")
+    s.set_defaults(func=cmd_web)
 
     s = sub.add_parser("demo", help="generate synthetic data and run backtest + scan")
     s.add_argument("--dir", default="demo_data")

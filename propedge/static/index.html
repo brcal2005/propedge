@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>propedge</title>
+<style>
+:root{
+  --bg:#111214;--panel:#17181b;--row:#1a1b1f;--row-alt:#1d1e22;--line:#2a2c31;--text:#ececef;--muted:#9a9ca5;
+  --accent:#5b7cfa;--good:#17a673;--bad:#c4373a;--warn:#e0a526;--chip:#24262b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+h1{font-size:22px;margin:0;font-weight:650;letter-spacing:-.01em}
+.badge{border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;margin-left:10px}
+.tab{background:none;border:1px solid transparent;border-radius:8px;padding:6px 12px;color:var(--muted);cursor:pointer}
+.tab.on{color:var(--text);border-color:var(--line);background:var(--panel)}
+.spacer{flex:1}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#3b3e45}
+.btn.primary{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.btn:disabled{opacity:.5;cursor:wait}
+.meta{color:var(--muted);font-size:12px}
+.filters{display:flex;gap:10px;align-items:center;padding:12px 22px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.filters input[type=search],.filters select,.filters input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.filters input[type=number]{width:72px}
+.filters label{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+.books{position:relative}
+.books .menu{display:none;position:absolute;top:110%;left:0;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;min-width:190px;max-height:320px;overflow:auto}
+.books.open .menu{display:block}
+.books .menu label{padding:4px 6px;color:var(--text)}
+main{padding:14px 22px 60px}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:1180px}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600;font-size:13px;text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
+th.c,td.c{text-align:center}
+th .arr{opacity:.5;font-size:11px;margin-left:3px}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr.prop{background:var(--row)}
+tbody tr.prop:nth-of-type(4n+3){background:var(--row-alt)}
+.num{color:var(--muted);width:36px;text-align:center}
+.player{display:flex;gap:12px;align-items:center;cursor:pointer;min-width:240px}
+.av{width:44px;height:44px;border-radius:50%;background:#2b2e35;border:2px solid #3a3d46;overflow:hidden;flex:none;display:grid;place-items:center;font-weight:700;color:var(--muted)}
+.av img{width:100%;height:100%;object-fit:cover;object-position:top}
+.pname{font-weight:650;font-size:15.5px}
+.pos{font-size:10.5px;border:1px solid #3b5bd6;color:#9db0ff;border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:2px}
+.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+.pick{cursor:pointer}
+.pick .mk{color:var(--muted);font-size:12.5px}
+.pick .sd{font-size:15.5px;font-weight:600}
+.pick .sd.under{color:#ff9b9d}
+.stepper{display:flex;align-items:center;gap:4px}
+.stepper button{width:28px;height:28px;border-radius:6px;background:var(--panel);border:1px solid var(--line);cursor:pointer}
+.stepper .v{min-width:56px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:#141518}
+.price b{font-size:15px}
+.ev{font-weight:700}
+.ev.up{color:#3ddc97}.ev.neg{color:var(--muted)}
+.heat{width:86px;text-align:center;font-weight:700;padding:0}
+.heat div{padding:11px 4px}
+.heat small{display:block;font-weight:500;opacity:.8;font-size:11.5px}
+.flag{font-size:11px;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap}
+.flag.news{background:#4a3410;color:#ffcf70}
+.flag.alt{background:#262a3a;color:#a9b6ff}
+.add{width:30px;height:30px;border-radius:7px;background:none;border:1px solid var(--line);cursor:pointer;color:var(--muted)}
+.add:hover{color:var(--text);border-color:var(--accent)}
+tr.detail > td{background:#141518;padding:14px 18px}
+.bars{display:flex;gap:6px;align-items:flex-end;height:110px;position:relative;padding-top:14px}
+.bar{flex:1;max-width:38px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--muted)}
+.bar i{display:block;width:100%;border-radius:4px 4px 0 0}
+.bar span{margin-top:3px;white-space:nowrap}
+.bar em{font-style:normal;color:var(--text);font-weight:600;margin-bottom:2px}
+.lineMark{position:absolute;left:0;right:0;border-top:1px dashed #8890a6}
+.detailgrid{display:flex;gap:28px;flex-wrap:wrap}
+.detailgrid .q{min-width:300px}
+.qt{font-size:12.5px;border-collapse:collapse;min-width:0}
+.qt td{padding:3px 10px 3px 0;border:none}
+.empty{padding:60px 20px;text-align:center;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card .k{color:var(--muted);font-size:12px}.card .v{font-size:20px;font-weight:700;margin-top:2px}
+.mini{padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-size:12px}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:20px;width:min(440px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog label{display:block;margin:10px 0 4px;color:var(--muted);font-size:13px}
+dialog input{width:100%;background:#111214;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#24262b;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:50;max-width:90vw}
+.note{color:var(--muted);font-size:12px;padding:10px 22px}
+@media (max-width:700px){header,.filters,main{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Player Prop Edge</h1><span class="badge" id="count">0 props</span>
+  <div class="tabs"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="bets">My bets</button></div>
+  <div class="spacer"></div>
+  <select id="sport" class="btn"></select>
+  <span class="meta" id="meta"></span>
+  <button class="btn" id="btnLogs" title="Download box scores from ESPN (free)">Update game logs</button>
+  <button class="btn primary" id="btnOdds" title="Costs Odds API credits">Refresh odds</button>
+  <button class="btn" id="btnSettings">Settings</button>
+</header>
+
+<section id="boardView">
+  <div class="filters">
+    <input type="search" id="q" placeholder="Search player or team">
+    <select id="fMarket"><option value="">All markets</option></select>
+    <label>Min EV <input type="number" id="fEv" step="0.5" placeholder="any">%</label>
+    <div class="books" id="booksDd"><button class="btn" id="booksBtn">My books: all</button><div class="menu" id="booksMenu"></div></div>
+    <label><input type="checkbox" id="fPriced" checked> Only lines with a price</label>
+    <label><input type="checkbox" id="fNews"> Hide CHECK NEWS</label>
+    <label><input type="checkbox" id="fModel"> Model agrees</label>
+  </div>
+  <main>
+    <div class="wrap"><table>
+      <thead><tr>
+        <th class="c">#</th><th data-sort="player">Player</th><th data-sort="market">Market &amp; Pick</th>
+        <th class="c">Line</th><th data-sort="price">Best price</th><th data-sort="fair">Fair</th>
+        <th data-sort="ev">EV<span class="arr">▼</span></th><th data-sort="proj">Proj <span class="meta">mkt / model</span></th>
+        <th class="c" data-sort="l5">L5</th><th class="c" data-sort="l10">L10</th><th class="c" data-sort="l20">L20</th>
+        <th class="c" data-sort="szn">SZN</th><th class="c" data-sort="h2h">H2H</th><th></th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table></div>
+    <div id="empty" class="empty" style="display:none"></div>
+  </main>
+  <div class="note">EV and Fair use the no-vig sharp price (Pinnacle etc.). Hit rates are context only — books already price recent form, so a high L10 isn't an edge on its own.
+    <span class="flag alt">ALT</span> fair price translated from a different sharp line. <span class="flag news">CHECK NEWS</span> model and market disagree by &gt;25% — usually injury/lineup news.</div>
+</section>
+
+<section id="betsView" style="display:none"><main>
+  <div class="cards" id="cards"></div>
+  <div class="wrap"><table><thead><tr><th>#</th><th>Placed</th><th>Player</th><th>Bet</th><th>Odds</th><th>Stake</th><th>Book</th><th>EV at bet</th><th>CLV</th><th>Result</th><th>P/L</th><th></th></tr></thead>
+  <tbody id="betsTb"></tbody></table></div>
+  <div class="note">CLV = how your price compares to the closing no-vig price. Beating the close over a few hundred bets is the best proof of a real edge. Click “Close” before tip-off with the sharp book's final two-way prices.</div>
+</main></section>
+
+<dialog id="dlgSettings"><form method="dialog">
+  <h3 style="margin:0 0 6px">Settings</h3>
+  <label>Odds API key <span class="meta">(stored only on this computer)</span></label><input id="sKey" type="password" placeholder="leave blank to keep current">
+  <label>Bankroll ($)</label><input id="sBank" type="number" step="50">
+  <label>Kelly fraction (0.25 = quarter Kelly)</label><input id="sKelly" type="number" step="0.05">
+  <label>Max stake (% of bankroll)</label><input id="sMax" type="number" step="0.5">
+  <label>Games to fetch per refresh <span class="meta">(each costs ~markets × 3 credits)</span></label><input id="sEvents" type="number" step="1">
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" value="cancel">Cancel</button><button class="btn primary" id="sSave" value="ok">Save</button></div>
+</form></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const TEAM = {"Atlanta Hawks":"ATL","Boston Celtics":"BOS","Brooklyn Nets":"BKN","Charlotte Hornets":"CHA","Chicago Bulls":"CHI","Cleveland Cavaliers":"CLE","Dallas Mavericks":"DAL","Denver Nuggets":"DEN","Detroit Pistons":"DET","Golden State Warriors":"GSW","Houston Rockets":"HOU","Indiana Pacers":"IND","Los Angeles Clippers":"LAC","Los Angeles Lakers":"LAL","Memphis Grizzlies":"MEM","Miami Heat":"MIA","Milwaukee Bucks":"MIL","Minnesota Timberwolves":"MIN","New Orleans Pelicans":"NOP","New York Knicks":"NYK","Oklahoma City Thunder":"OKC","Orlando Magic":"ORL","Philadelphia 76ers":"PHI","Phoenix Suns":"PHX","Portland Trail Blazers":"POR","Sacramento Kings":"SAC","San Antonio Spurs":"SAS","Toronto Raptors":"TOR","Utah Jazz":"UTA","Washington Wizards":"WAS"};
+const ab = t => TEAM[t] || (t||"").split(" ").map(w=>w[0]).join("").toUpperCase();
+const BOOK = {draftkings:"DraftKings",fanduel:"FanDuel",betmgm:"BetMGM",caesars:"Caesars",williamhill_us:"Caesars",betrivers:"BetRivers",bovada:"Bovada",betonlineag:"BetOnline",pinnacle:"Pinnacle",espnbet:"ESPN BET",fanatics:"Fanatics",hardrockbet:"Hard Rock",ballybet:"Bally",betparx:"betPARX",fliff:"Fliff",lowvig:"LowVig",mybookieag:"MyBookie",betus:"BetUS",circasports:"Circa"};
+const bk = b => BOOK[b] || b;
+
+let S = {sport: "basketball_nba", props: [], status: {}, sort: {k: "ev", dir: -1}, open: new Set(), lines: {}, sides: {}, books: null, allBooks: []};
+const LS = {get(k,d){try{const v=localStorage.getItem("pe_"+k);return v==null?d:JSON.parse(v)}catch(e){return d}}, set(k,v){try{localStorage.setItem("pe_"+k,JSON.stringify(v))}catch(e){}}};
+const cfg = Object.assign({bank:1000,kelly:0.25,max:3,events:8}, LS.get("cfg",{}));
+S.books = LS.get("books", null);
+
+// ---------- math (mirrors propedge/dist.py)
+function probs(mean, phi, line){
+  mean=Math.max(mean,1e-6); phi=Math.max(phi,1);
+  const r = phi>1.0001 ? mean/(phi-1) : null, p = r ? 1/phi : null;
+  const lg = x => { // lgamma (Lanczos)
+    const g=7,c=[0.99999999999980993,676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+    if(x<0.5) return Math.log(Math.PI/Math.sin(Math.PI*x))-lg(1-x);
+    x-=1; let a=c[0]; const t=x+g+0.5; for(let i=1;i<9;i++) a+=c[i]/(x+i);
+    return 0.5*Math.log(2*Math.PI)+(x+0.5)*Math.log(t)-t+Math.log(a);
+  };
+  let pm = r ? Math.exp(r*Math.log(p)) : Math.exp(-mean);
+  const K = Math.floor(line); let cdf=0, pk=0;
+  for(let k=0;k<=K;k++){ if(k>0) pm *= r ? (k-1+r)/k*(1-p) : mean/k; if(k<K||!Number.isInteger(line)) cdf+=pm; pk=pm; }
+  if(Number.isInteger(line)){ return [Math.max(0,1-cdf-pk), cdf, pk]; }
+  return [Math.max(0,1-cdf), cdf, 0];
+}
+const toAm = d => d>=2 ? "+"+Math.round((d-1)*100) : String(Math.round(-100/(d-1)));
+const pAm = p => { p=Math.min(Math.max(p,1e-4),1-1e-4); return toAm(1/p); };
+const kelly = (p,d,push) => { const b=d-1,q=Math.max(0,1-p-push); if(b<=0) return 0; return Math.max(0,(b*p-q)/(b*(p+q))); };
+
+// ---------- derive a row's numbers for its current line/side
+function compute(r){
+  const line = S.lines[r.id] ?? r.line;
+  const [po,pu,pp] = probs(r.mean, r.phi, line);
+  const soleSharp = r.sharp_books.length===1 ? r.sharp_books[0] : null;
+  const ok = q => q.line===line && q.book!==soleSharp && (!S.books || S.books.includes(q.book));
+  const best = side => r.quotes.filter(q=>ok(q)&&q.side===side).sort((a,b)=>b.price-a.price)[0];
+  const bo=best("over"), bu=best("under");
+  const evO = bo ? po*(bo.price-1)-(1-po-pp) : null, evU = bu ? pu*(bu.price-1)-(1-pu-pp) : null;
+  let side = S.sides[r.id];
+  if(!side) side = (evU!=null && (evO==null || evU>evO)) ? "under" : "over";
+  const q = side==="over"?bo:bu, pw = side==="over"?po:pu, ev = side==="over"?evO:evU;
+  const g = r.games, hit = v => side==="over" ? v>line : v<line;
+  const rate = arr => arr.length ? {h: arr.filter(x=>hit(x[2])).length, n: arr.length} : null;
+  const h2h = r.opp ? g.filter(x=>x[1]===r.opp) : [];
+  const news = r.model_mean!=null && Math.abs(r.model_mean-r.mean) > 0.25*Math.max(r.mean,1);
+  const modelP = r.model_mean!=null ? probs(r.model_mean, r.phi, line)[side==="over"?0:1] : null;
+  const modelEv = (q && modelP!=null) ? modelP*(q.price-1)-(1-modelP-pp) : null;
+  const exact = r.quotes.some(x=>r.sharp_books.includes(x.book) && x.line===line);
+  const stake = q ? Math.min(kelly(pw,q.price,pp)*cfg.kelly, cfg.max/100)*cfg.bank : 0;
+  return {line, side, q, pw, pp, ev, fairCond: pw/(1-pp||1), l5: rate(g.slice(-5)), l10: rate(g.slice(-10)), l20: rate(g.slice(-20)), szn: rate(g), h2h: rate(h2h), news, modelEv, exact, stake};
+}
+
+function heat(rt){
+  if(!rt) return `<td class="heat"><div style="color:var(--muted)">N/A</div></td>`;
+  const p = rt.h/rt.n;
+  const bg = p>=0.5 ? `rgba(23,166,115,${0.25+0.75*(p-0.5)*2})` : `rgba(196,55,58,${0.25+0.75*(0.5-p)*2})`;
+  return `<td class="heat"><div style="background:${bg}">${Math.round(p*100)}%<small>${rt.h}/${rt.n}</small></div></td>`;
+}
+const pctv = rt => rt ? rt.h/rt.n : -1;
+const fmtT = c => { try { return new Date(c).toLocaleString([], {month:"short", day:"2-digit", hour:"numeric", minute:"2-digit"}); } catch(e){ return ""; } };
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function render(){
+  const q = $("#q").value.toLowerCase(), fm = $("#fMarket").value, minEv = parseFloat($("#fEv").value||"-999")/100;
+  let rows = S.props.map(r => ({r, c: compute(r)}));
+  rows = rows.filter(({r,c}) => (S.lines[r.id]!=null || S.sides[r.id]) ? (!q || (r.player+" "+r.event).toLowerCase().includes(q)) && (!fm || r.market===fm) :
+    (!q || (r.player+" "+r.event).toLowerCase().includes(q)) && (!fm || r.market===fm) &&
+    (!$("#fPriced").checked || c.q) && (!$("#fNews").checked || !c.news) &&
+    (!$("#fModel").checked || (c.modelEv!=null && c.modelEv>0 && !c.news)) &&
+    (c.ev==null ? !$("#fPriced").checked : c.ev>=minEv));
+  const key = {player:x=>x.r.player, market:x=>x.r.label, price:x=>x.c.q?x.c.q.price:0, fair:x=>x.c.pw, ev:x=>x.c.ev??-9,
+    proj:x=>x.r.mean, l5:x=>pctv(x.c.l5), l10:x=>pctv(x.c.l10), l20:x=>pctv(x.c.l20), szn:x=>pctv(x.c.szn), h2h:x=>pctv(x.c.h2h)}[S.sort.k];
+  rows.sort((a,b)=>{const A=key(a),B=key(b); return (A>B?1:A<B?-1:0)*S.sort.dir;});
+  $("#count").textContent = `${rows.length} props`;
+  document.querySelectorAll("th[data-sort]").forEach(th=>{
+    const a=th.querySelector(".arr"); if(a) a.remove();
+    if(th.dataset.sort===S.sort.k) th.insertAdjacentHTML("beforeend",`<span class="arr">${S.sort.dir<0?"▼":"▲"}</span>`);
+  });
+  const tb = $("#tb"); let html = "";
+  rows.forEach(({r,c},i)=>{
+    const init = r.player.split(" ").map(w=>w[0]).slice(0,2).join("");
+    const img = r.athlete_id ? `<img src="https://a.espncdn.com/i/headshots/nba/players/full/${r.athlete_id}.png" alt="" onerror="this.remove()">` : "";
+    const matchup = `${ab(r.away)} @ ${ab(r.home)}`;
+    html += `<tr class="prop" data-id="${esc(r.id)}">
+      <td class="num">${i+1}</td>
+      <td><div class="player" data-act="open"><div class="av">${img||init}</div><div>
+        <div class="pname">${esc(r.player)}${r.pos?`<span class="pos">${esc(r.pos)}</span>`:""}</div>
+        <div class="sub">${matchup} · ${fmtT(r.commence)}</div></div></div></td>
+      <td class="pick" data-act="side" title="Click to switch over/under"><div class="mk">${esc(r.label)}</div>
+        <div class="sd ${c.side}">${c.side==="over"?"Over":"Under"} ${c.line}</div></td>
+      <td class="c"><div class="stepper"><button data-act="dn">−</button><div class="v">${c.line}</div><button data-act="up">+</button></div></td>
+      <td class="price">${c.q?`<b>${toAm(c.q.price)}</b><div class="sub">${bk(c.q.book)}</div>`:`<span class="meta">no price</span>`}</td>
+      <td>${pAm(c.fairCond)}<div class="sub">${(c.pw*100).toFixed(1)}%</div></td>
+      <td><span class="ev ${c.ev>0?"up":"neg"}">${c.ev==null?"—":(c.ev>0?"+":"")+(c.ev*100).toFixed(1)+"%"}</span>
+        ${c.q&&c.ev>0?`<div class="sub">$${c.stake.toFixed(0)}</div>`:""}
+        ${!c.exact?`<span class="flag alt">ALT</span>`:""}${c.news?`<span class="flag news">CHECK NEWS</span>`:""}</td>
+      <td>${r.mean.toFixed(1)} <span class="meta">/ ${r.model_mean!=null?r.model_mean.toFixed(1):"—"}</span>
+        ${c.modelEv!=null?`<div class="sub">model EV ${(c.modelEv>0?"+":"")+(c.modelEv*100).toFixed(0)}%</div>`:""}</td>
+      ${heat(c.l5)}${heat(c.l10)}${heat(c.l20)}${heat(c.szn)}${heat(c.h2h)}
+      <td class="c"><button class="add" data-act="bet" title="Log this bet">+</button></td></tr>`;
+    if(S.open.has(r.id)) html += detail(r,c);
+  });
+  tb.innerHTML = html;
+  const empty = $("#empty");
+  empty.style.display = rows.length ? "none" : "block";
+  empty.textContent = S.message || (S.props.length ? "No props match these filters." : "Loading…");
+}
+
+function detail(r,c){
+  const g = r.games.slice(-15), mx = Math.max(c.line*1.3, ...g.map(x=>x[2]), 1);
+  const bars = g.map(x=>{const h=x[2]/mx*100, hit = c.side==="over"?x[2]>c.line:x[2]<c.line;
+    return `<div class="bar" title="${x[0]} vs ${esc(x[1])} — ${x[3]??"?"} min"><em>${x[2]}</em><i style="height:${h}%;background:${hit?"var(--good)":"var(--bad)"}"></i><span>${ab(x[1])}</span></div>`;}).join("");
+  const qs = [...r.quotes].sort((a,b)=>a.line-b.line||a.book.localeCompare(b.book)), byKey = {};
+  qs.forEach(q=>{const k=q.book+"|"+q.line; (byKey[k]=byKey[k]||{book:q.book,line:q.line})[q.side]=q.price;});
+  const qrows = Object.values(byKey).map(x=>`<tr><td>${bk(x.book)}${r.sharp_books.includes(x.book)?' <span class="flag alt">sharp</span>':""}</td><td>${x.line}</td><td>O ${x.over?toAm(x.over):"—"}</td><td>U ${x.under?toAm(x.under):"—"}</td></tr>`).join("");
+  return `<tr class="detail"><td colspan="14"><div class="detailgrid">
+    <div style="flex:1;min-width:320px"><div class="meta" style="margin-bottom:4px">Last ${g.length} games (line ${c.line})</div>
+      <div class="bars"><div class="lineMark" style="bottom:${c.line/mx*100*0.86+14}px"></div>${bars||'<span class="meta">No game logs — click “Update game logs”.</span>'}</div></div>
+    <div class="q"><div class="meta" style="margin-bottom:4px">All prices</div><table class="qt">${qrows}</table></div></div></td></tr>`;
+}
+
+// ---------- events
+$("#tb").addEventListener("click", e=>{
+  const act = e.target.closest("[data-act]")?.dataset.act; if(!act) return;
+  const id = e.target.closest("tr").dataset.id || e.target.closest("tr").previousElementSibling?.dataset.id;
+  const r = S.props.find(p=>p.id===id); if(!r) return;
+  const c = compute(r);
+  if(act==="open"){ S.open.has(id)?S.open.delete(id):S.open.add(id); }
+  if(act==="side"){ S.sides[id] = c.side==="over"?"under":"over"; }
+  if(act==="up"||act==="dn"){
+    const ls = [...new Set(r.quotes.map(q=>q.line))].sort((a,b)=>a-b);
+    let nl = c.line + (act==="up"?1:-1);
+    const nearest = ls.filter(l=>act==="up"?l>c.line:l<c.line); // jump to real alt lines when they exist
+    if(nearest.length) nl = act==="up"?nearest[0]:nearest[nearest.length-1];
+    S.lines[id] = Math.max(0.5, nl);
+  }
+  if(act==="bet"){ logBet(r,c); return; }
+  render();
+});
+document.querySelectorAll("th[data-sort]").forEach(th=>th.addEventListener("click",()=>{
+  const k=th.dataset.sort; S.sort = {k, dir: S.sort.k===k ? -S.sort.dir : -1}; render();
+}));
+["#q","#fMarket","#fEv","#fPriced","#fNews","#fModel"].forEach(s=>$(s).addEventListener("input",render));
+$("#booksBtn").addEventListener("click",e=>{e.stopPropagation(); $("#booksDd").classList.toggle("open");});
+document.addEventListener("click",e=>{ if(!e.target.closest("#booksDd")) $("#booksDd").classList.remove("open"); });
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));
+  $("#boardView").style.display = t.dataset.tab==="board"?"":"none";
+  $("#betsView").style.display = t.dataset.tab==="bets"?"":"none";
+  if(t.dataset.tab==="bets") loadBets();
+}));
+
+function toast(m, ms=3500){ const t=$("#toast"); t.textContent=m; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",ms); }
+async function api(path, body){
+  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
+  const j = await r.json(); if(!r.ok) throw new Error(j.error||r.statusText); return j;
+}
+
+function renderBooks(){
+  const m = $("#booksMenu");
+  m.innerHTML = `<label><input type="checkbox" data-all ${!S.books?"checked":""}> All books</label>` +
+    S.allBooks.map(b=>`<label><input type="checkbox" value="${b}" ${!S.books||S.books.includes(b)?"checked":""}> ${bk(b)}</label>`).join("");
+  $("#booksBtn").textContent = "My books: " + (!S.books ? "all" : S.books.length+" selected");
+  m.querySelectorAll("input").forEach(i=>i.addEventListener("change",()=>{
+    if(i.dataset.all!==undefined) S.books = i.checked ? null : [];
+    else { const sel=[...m.querySelectorAll("input[value]:checked")].map(x=>x.value); S.books = sel.length===S.allBooks.length?null:sel; }
+    LS.set("books", S.books); renderBooks(); render();
+  }));
+}
+
+async function loadStatus(){
+  S.status = await api(`/api/status?sport=${S.sport}`);
+  const sel=$("#sport"); if(!sel.options.length){ sel.innerHTML = Object.entries(S.status.sports).map(([k,v])=>`<option value="${k}">${v}</option>`).join(""); }
+  const fm=$("#fMarket"); fm.innerHTML = `<option value="">All markets</option>` + S.status.markets.map(m=>`<option value="${m}">${S.status.labels[m]||m}</option>`).join("");
+  const qu = S.status.quota;
+  $("#meta").textContent = [S.status.odds_updated ? "odds "+S.status.odds_updated.replace("T"," ") : "no odds yet",
+    S.status.logs_updated ? "logs "+S.status.logs_updated.slice(0,10) : "no logs", qu ? `${qu.remaining} credits left` : ""].filter(Boolean).join(" · ");
+}
+async function loadBoard(){
+  const b = await api(`/api/board?sport=${S.sport}`);
+  S.props = b.props; S.message = b.message; S.allBooks = b.books||[]; renderBooks(); render();
+}
+async function refresh(){ await loadStatus(); await loadBoard(); }
+
+$("#sport").addEventListener("change", e=>{ S.sport=e.target.value; refresh(); });
+$("#btnOdds").addEventListener("click", async e=>{
+  if(!S.status.has_key){ toast("Add your Odds API key in Settings first."); return openSettings(); }
+  const n = cfg.events, cost = n * S.status.markets.length * 3;
+  if(!confirm(`Fetch live props for up to ${n} games? This uses about ${cost} Odds API credits.`)) return;
+  e.target.disabled = true; e.target.textContent = "Fetching…";
+  try { const r = await api("/api/refresh-odds", {sport:S.sport, max_events:n}); toast(`Fetched ${r.events} games.`); await refresh(); }
+  catch(err){ toast("Error: "+err.message, 7000); }
+  e.target.disabled = false; e.target.textContent = "Refresh odds";
+});
+$("#btnLogs").addEventListener("click", async e=>{
+  e.target.disabled = true; e.target.textContent = "Downloading (≈1 min first time)…";
+  try { const r = await api("/api/refresh-logs", {sport:S.sport}); toast(`Loaded ${r.rows} player-games.`); await refresh(); }
+  catch(err){ toast("Error: "+err.message, 7000); }
+  e.target.disabled = false; e.target.textContent = "Update game logs";
+});
+function openSettings(){ $("#sBank").value=cfg.bank; $("#sKelly").value=cfg.kelly; $("#sMax").value=cfg.max; $("#sEvents").value=cfg.events; $("#sKey").value=""; $("#dlgSettings").showModal(); }
+$("#btnSettings").addEventListener("click", openSettings);
+$("#dlgSettings").addEventListener("close", async ()=>{
+  if($("#dlgSettings").returnValue!=="ok") return;
+  Object.assign(cfg,{bank:+$("#sBank").value||1000,kelly:+$("#sKelly").value||0.25,max:+$("#sMax").value||3,events:Math.max(1,+$("#sEvents").value||8)});
+  LS.set("cfg",cfg);
+  const k=$("#sKey").value.trim(); if(k){ await api("/api/config",{odds_api_key:k}); toast("API key saved locally."); await loadStatus(); }
+  render();
+});
+
+async function logBet(r,c){
+  if(!c.q){ toast("No book price at this line."); return; }
+  const s = prompt(`${r.player} ${c.side} ${c.line} ${r.label}\n${toAm(c.q.price)} at ${bk(c.q.book)} · EV ${(c.ev*100).toFixed(1)}%\n\nStake ($):`, Math.max(1,Math.round(c.stake))||10);
+  if(s==null) return;
+  try { await api("/api/bets",{player:r.player, market:r.market, line:c.line, side:c.side, odds:c.q.price, stake:+s, book:c.q.book, event:r.event, fair_p:c.pw}); toast("Bet logged — see My bets."); }
+  catch(err){ toast("Error: "+err.message); }
+}
+
+async function loadBets(){
+  const {bets, report:rp} = await api("/api/bets");
+  const f = (x,d=1)=>x==null?"—":(x>0?"+":"")+(x*100).toFixed(d)+"%";
+  $("#cards").innerHTML = [["Bets",rp.bets],["Record",`${rp.wins}-${rp.losses}-${rp.pushes}`],["Profit",`${rp.profit>=0?"+":""}$${rp.profit.toFixed(2)}`],
+    ["ROI",f(rp.roi)],["Avg EV at bet",f(rp.avg_ev_at_bet)],["Avg CLV",f(rp.avg_clv)+(rp.n_clv?` (${rp.n_clv})`:"")]]
+    .map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  $("#betsTb").innerHTML = bets.length ? bets.map(b=>`<tr><td>${b.id}</td><td>${b.placed_at.slice(5,16).replace("T"," ")}</td><td>${esc(b.player)}</td>
+    <td>${b.side} ${b.line} <span class="meta">${esc(S.status.labels?.[b.market]||b.market)}</span></td><td>${toAm(b.odds)}</td><td>$${b.stake}</td><td>${bk(b.book)}</td>
+    <td>${b.fair_p?f(b.fair_p*b.odds-1):"—"}</td><td>${b.close_fair_p?f(b.close_fair_p*b.odds-1):"—"}</td>
+    <td>${b.result||"open"}</td><td>${b.profit==null?"":(b.profit>=0?"+":"")+b.profit.toFixed(2)}</td>
+    <td style="white-space:nowrap">${b.result?"":`<button class="mini" data-b="${b.id}" data-r="win">Win</button> <button class="mini" data-b="${b.id}" data-r="loss">Loss</button> <button class="mini" data-b="${b.id}" data-r="push">Push</button> `}<button class="mini" data-b="${b.id}" data-r="close">Close</button></td></tr>`).join("")
+    : `<tr><td colspan="12" class="empty">No bets yet — click + on a prop to log one.</td></tr>`;
+}
+$("#betsTb").addEventListener("click", async e=>{
+  const b=e.target.dataset.b, r=e.target.dataset.r; if(!b) return;
+  try{
+    if(r==="close"){ const s=prompt("Closing sharp prices, over and under (e.g. -125 +105):"); if(!s) return;
+      const [o,u]=s.trim().split(/[\s,\/]+/); await api("/api/bets/close",{id:b, over:o, under:u}); }
+    else await api("/api/bets/settle",{id:b, result:r});
+    loadBets();
+  } catch(err){ toast("Error: "+err.message); }
+});
+
+refresh().catch(e=>{ S.message="Could not reach the propedge server: "+e.message; render(); });
+</script>
+</body>
+</html>

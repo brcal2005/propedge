@@ -22,6 +22,22 @@ propedge demo               # synthetic data, runs the backtest and the scan
 python -m unittest discover -s tests
 ```
 
+## Dashboard (website view)
+
+```bash
+python -m propedge web          # opens http://localhost:8000
+```
+
+1. **Settings**: paste your Odds API key. It's stored only on your computer in `~/.propedge/config.json`.
+2. **Update game logs**: downloads this season's box scores from ESPN. It's free and takes about a minute the first time.
+3. **Refresh odds**: pulls live props. It costs credits and asks before spending them.
+
+Each row shows the best price, the no-vig fair odds, EV, a suggested stake, market and model
+projections, and L5/L10/L20/season/head-to-head hit rates. Use − and + to move the line, or click
+the pick to flip over/under. Click a player to see their recent games and every book's price. Use
+**+** to log a bet; the **My bets** tab tracks results and CLV. The dashboard only listens on
+`127.0.0.1`, so nothing is exposed to your network.
+
 ## Live scanning (The Odds API)
 
 1. Get a key at https://the-odds-api.com (props need a paid tier for real volume).

@@ -12,10 +12,20 @@ import urllib.parse
 import urllib.request
 
 BASE = "https://api.the-odds-api.com/v4"
+LAST_QUOTA: dict = {}
+
+
+def _config_key() -> str | None:
+    path = os.path.join(os.path.expanduser("~"), ".propedge", "config.json")
+    try:
+        with open(path) as f:
+            return json.load(f).get("odds_api_key")
+    except (OSError, ValueError):
+        return None
 
 
 def _get(path: str, **params) -> list | dict:
-    key = os.environ.get("ODDS_API_KEY")
+    key = os.environ.get("ODDS_API_KEY") or _config_key()
     if not key:
         raise SystemExit("ODDS_API_KEY is not set. Get a key at https://the-odds-api.com")
     params["apiKey"] = key
@@ -24,6 +34,7 @@ def _get(path: str, **params) -> list | dict:
         remaining = r.headers.get("x-requests-remaining")
         used = r.headers.get("x-requests-used")
         if remaining is not None:
+            LAST_QUOTA.update(remaining=remaining, used=used)
             print(f"[odds-api] credits used={used} remaining={remaining}", file=sys.stderr)
         return json.loads(r.read())
 
