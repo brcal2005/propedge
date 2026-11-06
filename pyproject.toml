@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "propedge"
+version = "0.1.0"
+description = "Find +EV player props: no-vig market scanner, projection model, backtester, CLV tracker"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+propedge = "propedge.cli:main"
+
+[tool.setuptools]
+packages = ["propedge"]
