@@ -1,0 +1,16 @@
+# One-click deploy on Render: https://render.com  (New > Blueprint > pick this repo)
+services:
+  - type: web
+    name: propedge
+    runtime: docker
+    plan: starter          # needed for the persistent disk below (keeps your bets between deploys)
+    healthCheckPath: /login
+    disk:
+      name: propedge-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: PROPEDGE_PASSWORD   # the password you'll type on your phone
+        sync: false
+      - key: ODDS_API_KEY        # your Odds API key
+        sync: false

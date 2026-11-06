@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 
 from . import backtest as bt
@@ -252,7 +253,9 @@ def cmd_fetch_logs(a):
 
 def cmd_web(a):
     from .web import serve
-    serve(a.port, open_browser=not a.no_browser)
+    host = a.host or ("0.0.0.0" if a.phone else "127.0.0.1")
+    port = a.port or int(os.environ.get("PORT", 8000))
+    serve(port, host, open_browser=not a.no_browser and host == "127.0.0.1", password=a.password)
 
 
 def main(argv=None):
@@ -343,7 +346,10 @@ def main(argv=None):
     s.set_defaults(func=cmd_fetch_logs)
 
     s = sub.add_parser("web", help="open the dashboard in your browser (http://localhost:8000)")
-    s.add_argument("--port", type=int, default=8000)
+    s.add_argument("--port", type=int, help="default 8000 (or $PORT)")
+    s.add_argument("--phone", action="store_true", help="also reachable from your phone on the same Wi-Fi (needs --password)")
+    s.add_argument("--host", help="bind address (default 127.0.0.1; --phone uses 0.0.0.0)")
+    s.add_argument("--password", help="dashboard password (or $PROPEDGE_PASSWORD)")
     s.add_argument("--no-browser", action="store_true")
     s.set_defaults(func=cmd_web)
 

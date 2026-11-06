@@ -16,7 +16,8 @@ LAST_QUOTA: dict = {}
 
 
 def _config_key() -> str | None:
-    path = os.path.join(os.path.expanduser("~"), ".propedge", "config.json")
+    from .paths import home
+    path = os.path.join(home(), "config.json")
     try:
         with open(path) as f:
             return json.load(f).get("odds_api_key")

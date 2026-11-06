@@ -11,6 +11,7 @@ import os
 import sqlite3
 
 from .odds import devig
+from .paths import home
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS bets (
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS bets (
 
 
 def db_path() -> str:
-    return os.environ.get("PROPEDGE_DB", os.path.join(os.path.expanduser("~"), ".propedge", "bets.db"))
+    return os.environ.get("PROPEDGE_DB", os.path.join(home(), "bets.db"))
 
 
 def connect(path: str | None = None) -> sqlite3.Connection:

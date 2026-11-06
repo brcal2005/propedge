@@ -38,6 +38,33 @@ the pick to flip over/under. Click a player to see their recent games and every 
 **+** to log a bet; the **My bets** tab tracks results and CLV. The dashboard only listens on
 `127.0.0.1`, so nothing is exposed to your network.
 
+## On your phone
+
+**Option 1: home Wi-Fi (free).** Your computer runs the dashboard and your phone connects to it.
+
+```bash
+python -m propedge web --phone --password 'pick-something-long'
+```
+
+The terminal prints an address like `http://192.168.1.23:8000`. Open it on your phone while it's on
+the same Wi-Fi, then sign in. To make it feel like an app, use **Share → Add to Home Screen** (iPhone)
+or **⋮ → Add to Home screen** (Android). Your computer has to stay on with the command running.
+If the page won't load, allow Python through your computer's firewall when asked.
+
+**Option 2: from anywhere (hosted, about $7/month on Render).**
+
+1. Sign up at https://render.com and connect your GitHub.
+2. Click **New → Blueprint** and pick this repo. `render.yaml` sets everything up.
+3. When asked, enter `PROPEDGE_PASSWORD` (your login) and `ODDS_API_KEY`.
+4. Open the `https://propedge-xxxx.onrender.com` address it gives you on your phone and add it to your Home Screen.
+
+The paid "starter" plan is needed for the 1 GB disk that keeps your bets, odds and game logs
+between deploys. The `Dockerfile` works on any other host too (Fly.io, Railway, a VPS); mount a disk
+at `/data`.
+
+The dashboard always requires the password when it's reachable from other devices, and it refuses
+to start without one. Logins last 30 days per device.
+
 ## Live scanning (The Odds API)
 
 1. Get a key at https://the-odds-api.com (props need a paid tier for real volume).

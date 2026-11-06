@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>propedge</title>
+<title>Player Prop Edge</title>
+<meta name="theme-color" content="#111214">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PropEdge">
+<link rel="manifest" href="/manifest.webmanifest">
 <style>
 :root{
   --bg:#111214;--panel:#17181b;--row:#1a1b1f;--row-alt:#1d1e22;--line:#2a2c31;--text:#ececef;--muted:#9a9ca5;
@@ -88,7 +94,46 @@ dialog label{display:block;margin:10px 0 4px;color:var(--muted);font-size:13px}
 dialog input{width:100%;background:#111214;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#24262b;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:50;max-width:90vw}
 .note{color:var(--muted);font-size:12px;padding:10px 22px}
-@media (max-width:700px){header,.filters,main{padding-left:16px;padding-right:16px}}
+#mlist{display:none}
+.sm{display:none}
+.fToggle,.sortSel{display:none}
+@media (max-width:760px){
+  header,.filters,main{padding-left:12px;padding-right:12px}
+  header{gap:8px;padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:10px}
+  h1{font-size:18px} .tabs{margin-left:0} .spacer{display:none}
+  header .meta{order:9;width:100%}
+  header .btn,header select{padding:6px 9px;font-size:13px}
+  .fToggle{display:inline-block}
+  .hm{display:none} .sm{display:inline}
+  header .meta{font-size:11px}
+  .filters{display:none;padding-top:10px;padding-bottom:10px}
+  .filters.show{display:flex}
+  .filters input[type=search]{flex:1 1 100%}
+  .sortSel{display:inline-block}
+  #boardView .wrap{display:none}
+  #mlist{display:flex;flex-direction:column;gap:10px}
+  main{padding-top:10px}
+  .note{padding:10px 12px 40px}
+  .cards{grid-template-columns:repeat(2,1fr)}
+}
+.pc{background:var(--row);border:1px solid var(--line);border-radius:12px;padding:12px}
+.pc-top{display:flex;align-items:center;gap:10px}
+.pc-top .player{min-width:0;flex:1}
+.pc-top .pname{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-top .av{width:40px;height:40px}
+.pc-mid{display:flex;justify-content:space-between;align-items:center;margin:10px 0 8px;gap:10px}
+.pc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.pc-stats div{background:#141518;border-radius:8px;padding:6px 8px}
+.pc-stats span{display:block;color:var(--muted);font-size:11px}
+.pc-stats b{font-size:14.5px}
+.pc-stats small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-heat{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.pc-heat .heat{width:auto;border-radius:7px;overflow:hidden;display:block}
+.pc-heat .heat div{padding:5px 2px;font-size:13px}
+.pc-heat .lbl{display:block;font-size:10px;font-weight:600;opacity:.75;letter-spacing:.03em}
+.pc-flags{margin-top:6px}
+.pc .detailgrid{margin-top:10px;gap:14px}
+.pc .detailgrid > div{min-width:0 !important;width:100%}
 </style>
 </head>
 <body>
@@ -98,13 +143,14 @@ dialog input{width:100%;background:#111214;border:1px solid var(--line);border-r
   <div class="spacer"></div>
   <select id="sport" class="btn"></select>
   <span class="meta" id="meta"></span>
-  <button class="btn" id="btnLogs" title="Download box scores from ESPN (free)">Update game logs</button>
+  <button class="btn" id="btnLogs" title="Download box scores from ESPN (free)">Update<span class="hm"> game</span> logs</button>
   <button class="btn primary" id="btnOdds" title="Costs Odds API credits">Refresh odds</button>
-  <button class="btn" id="btnSettings">Settings</button>
+  <button class="btn fToggle" id="btnFilters">Filters</button>
+  <button class="btn" id="btnSettings"><span class="hm">Settings</span><span class="sm">⚙︎</span></button>
 </header>
 
 <section id="boardView">
-  <div class="filters">
+  <div class="filters" id="filters">
     <input type="search" id="q" placeholder="Search player or team">
     <select id="fMarket"><option value="">All markets</option></select>
     <label>Min EV <input type="number" id="fEv" step="0.5" placeholder="any">%</label>
@@ -112,6 +158,7 @@ dialog input{width:100%;background:#111214;border:1px solid var(--line);border-r
     <label><input type="checkbox" id="fPriced" checked> Only lines with a price</label>
     <label><input type="checkbox" id="fNews"> Hide CHECK NEWS</label>
     <label><input type="checkbox" id="fModel"> Model agrees</label>
+    <select id="sortSel" class="sortSel"><option value="ev">Sort: EV</option><option value="l5">Sort: L5</option><option value="l10">Sort: L10</option><option value="l20">Sort: L20</option><option value="szn">Sort: Season</option><option value="h2h">Sort: H2H</option><option value="price">Sort: Price</option></select>
   </div>
   <main>
     <div class="wrap"><table>
@@ -124,6 +171,7 @@ dialog input{width:100%;background:#111214;border:1px solid var(--line);border-r
       </tr></thead>
       <tbody id="tb"></tbody>
     </table></div>
+    <div id="mlist"></div>
     <div id="empty" class="empty" style="display:none"></div>
   </main>
   <div class="note">EV and Fair use the no-vig sharp price (Pinnacle etc.). Hit rates are context only — books already price recent form, so a high L10 isn't an edge on its own.
@@ -144,6 +192,7 @@ dialog input{width:100%;background:#111214;border:1px solid var(--line);border-r
   <label>Kelly fraction (0.25 = quarter Kelly)</label><input id="sKelly" type="number" step="0.05">
   <label>Max stake (% of bankroll)</label><input id="sMax" type="number" step="0.5">
   <label>Games to fetch per refresh <span class="meta">(each costs ~markets × 3 credits)</span></label><input id="sEvents" type="number" step="1">
+  <div class="meta" style="margin-top:12px"><a href="/logout" style="color:var(--muted)">Sign out</a></div>
   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" value="cancel">Cancel</button><button class="btn primary" id="sSave" value="ok">Save</button></div>
 </form></dialog>
 <div class="toast" id="toast"></div>
@@ -203,11 +252,11 @@ function compute(r){
   return {line, side, q, pw, pp, ev, fairCond: pw/(1-pp||1), l5: rate(g.slice(-5)), l10: rate(g.slice(-10)), l20: rate(g.slice(-20)), szn: rate(g), h2h: rate(h2h), news, modelEv, exact, stake};
 }
 
+const heatBg = p => p>=0.5 ? `rgba(23,166,115,${0.25+0.75*(p-0.5)*2})` : `rgba(196,55,58,${0.25+0.75*(0.5-p)*2})`;
 function heat(rt){
   if(!rt) return `<td class="heat"><div style="color:var(--muted)">N/A</div></td>`;
   const p = rt.h/rt.n;
-  const bg = p>=0.5 ? `rgba(23,166,115,${0.25+0.75*(p-0.5)*2})` : `rgba(196,55,58,${0.25+0.75*(0.5-p)*2})`;
-  return `<td class="heat"><div style="background:${bg}">${Math.round(p*100)}%<small>${rt.h}/${rt.n}</small></div></td>`;
+  return `<td class="heat"><div style="background:${heatBg(p)}">${Math.round(p*100)}%<small>${rt.h}/${rt.n}</small></div></td>`;
 }
 const pctv = rt => rt ? rt.h/rt.n : -1;
 const fmtT = c => { try { return new Date(c).toLocaleString([], {month:"short", day:"2-digit", hour:"numeric", minute:"2-digit"}); } catch(e){ return ""; } };
@@ -229,7 +278,8 @@ function render(){
     const a=th.querySelector(".arr"); if(a) a.remove();
     if(th.dataset.sort===S.sort.k) th.insertAdjacentHTML("beforeend",`<span class="arr">${S.sort.dir<0?"▼":"▲"}</span>`);
   });
-  const tb = $("#tb"); let html = "";
+  const tb = $("#tb"); let html = "", cards = "";
+  const mobile = matchMedia("(max-width:760px)").matches;
   rows.forEach(({r,c},i)=>{
     const init = r.player.split(" ").map(w=>w[0]).slice(0,2).join("");
     const img = r.athlete_id ? `<img src="https://a.espncdn.com/i/headshots/nba/players/full/${r.athlete_id}.png" alt="" onerror="this.remove()">` : "";
@@ -252,30 +302,56 @@ function render(){
       ${heat(c.l5)}${heat(c.l10)}${heat(c.l20)}${heat(c.szn)}${heat(c.h2h)}
       <td class="c"><button class="add" data-act="bet" title="Log this bet">+</button></td></tr>`;
     if(S.open.has(r.id)) html += detail(r,c);
+    if(mobile) cards += card(r,c,img||init,matchup);
   });
-  tb.innerHTML = html;
+  tb.innerHTML = mobile ? "" : html;
+  $("#mlist").innerHTML = cards;
   const empty = $("#empty");
   empty.style.display = rows.length ? "none" : "block";
   empty.textContent = S.message || (S.props.length ? "No props match these filters." : "Loading…");
 }
 
-function detail(r,c){
+function card(r,c,av,matchup){
+  const hc = (lbl,rt) => !rt ? `<div class="heat"><div style="color:var(--muted)"><span class="lbl">${lbl}</span>N/A</div></div>`
+    : `<div class="heat"><div style="background:${heatBg(rt.h/rt.n)}"><span class="lbl">${lbl}</span>${Math.round(rt.h/rt.n*100)}%<small>${rt.h}/${rt.n}</small></div></div>`;
+  return `<div class="pc" data-id="${esc(r.id)}">
+    <div class="pc-top"><div class="player" data-act="open"><div class="av">${av}</div><div style="min-width:0">
+      <div class="pname">${esc(r.player)}${r.pos?`<span class="pos">${esc(r.pos)}</span>`:""}</div>
+      <div class="sub">${matchup} · ${fmtT(r.commence)}</div></div></div>
+      <button class="add" data-act="bet" title="Log this bet">+</button></div>
+    <div class="pc-mid"><div class="pick" data-act="side"><div class="mk">${esc(r.label)} · tap to flip</div>
+      <div class="sd ${c.side}">${c.side==="over"?"Over":"Under"} ${c.line}</div></div>
+      <div class="stepper"><button data-act="dn">−</button><div class="v">${c.line}</div><button data-act="up">+</button></div></div>
+    <div class="pc-stats">
+      <div><span>Best</span><b>${c.q?toAm(c.q.price):"—"}</b><small>${c.q?bk(c.q.book):"no price"}</small></div>
+      <div><span>Fair</span><b>${pAm(c.fairCond)}</b><small>${(c.pw*100).toFixed(1)}%</small></div>
+      <div><span>EV</span><b class="ev ${c.ev>0?"up":"neg"}">${c.ev==null?"—":(c.ev>0?"+":"")+(c.ev*100).toFixed(1)+"%"}</b><small>${c.q&&c.ev>0?"$"+c.stake.toFixed(0):"&nbsp;"}</small></div>
+      <div><span>Proj</span><b>${r.mean.toFixed(1)}</b><small>model ${r.model_mean!=null?r.model_mean.toFixed(1):"—"}</small></div></div>
+    <div class="pc-heat">${hc("L5",c.l5)}${hc("L10",c.l10)}${hc("L20",c.l20)}${hc("SZN",c.szn)}${hc("H2H",c.h2h)}</div>
+    ${(!c.exact||c.news)?`<div class="pc-flags">${!c.exact?`<span class="flag alt">ALT</span>`:""}${c.news?`<span class="flag news">CHECK NEWS</span>`:""}</div>`:""}
+    ${S.open.has(r.id)?detailInner(r,c):""}</div>`;
+}
+
+function detail(r,c){ return `<tr class="detail"><td colspan="14">${detailInner(r,c)}</td></tr>`; }
+
+function detailInner(r,c){
   const g = r.games.slice(-15), mx = Math.max(c.line*1.3, ...g.map(x=>x[2]), 1);
   const bars = g.map(x=>{const h=x[2]/mx*100, hit = c.side==="over"?x[2]>c.line:x[2]<c.line;
     return `<div class="bar" title="${x[0]} vs ${esc(x[1])} — ${x[3]??"?"} min"><em>${x[2]}</em><i style="height:${h}%;background:${hit?"var(--good)":"var(--bad)"}"></i><span>${ab(x[1])}</span></div>`;}).join("");
   const qs = [...r.quotes].sort((a,b)=>a.line-b.line||a.book.localeCompare(b.book)), byKey = {};
   qs.forEach(q=>{const k=q.book+"|"+q.line; (byKey[k]=byKey[k]||{book:q.book,line:q.line})[q.side]=q.price;});
   const qrows = Object.values(byKey).map(x=>`<tr><td>${bk(x.book)}${r.sharp_books.includes(x.book)?' <span class="flag alt">sharp</span>':""}</td><td>${x.line}</td><td>O ${x.over?toAm(x.over):"—"}</td><td>U ${x.under?toAm(x.under):"—"}</td></tr>`).join("");
-  return `<tr class="detail"><td colspan="14"><div class="detailgrid">
+  return `<div class="detailgrid">
     <div style="flex:1;min-width:320px"><div class="meta" style="margin-bottom:4px">Last ${g.length} games (line ${c.line})</div>
       <div class="bars"><div class="lineMark" style="bottom:${c.line/mx*100*0.86+14}px"></div>${bars||'<span class="meta">No game logs — click “Update game logs”.</span>'}</div></div>
-    <div class="q"><div class="meta" style="margin-bottom:4px">All prices</div><table class="qt">${qrows}</table></div></div></td></tr>`;
+    <div class="q"><div class="meta" style="margin-bottom:4px">All prices</div><table class="qt">${qrows}</table></div></div>`;
 }
 
 // ---------- events
-$("#tb").addEventListener("click", e=>{
+function onAct(e){
   const act = e.target.closest("[data-act]")?.dataset.act; if(!act) return;
-  const id = e.target.closest("tr").dataset.id || e.target.closest("tr").previousElementSibling?.dataset.id;
+  const holder = e.target.closest(".pc") || e.target.closest("tr");
+  const id = holder.dataset.id || holder.previousElementSibling?.dataset.id;
   const r = S.props.find(p=>p.id===id); if(!r) return;
   const c = compute(r);
   if(act==="open"){ S.open.has(id)?S.open.delete(id):S.open.add(id); }
@@ -289,7 +365,12 @@ $("#tb").addEventListener("click", e=>{
   }
   if(act==="bet"){ logBet(r,c); return; }
   render();
-});
+}
+$("#tb").addEventListener("click", onAct);
+$("#mlist").addEventListener("click", onAct);
+$("#btnFilters").addEventListener("click", ()=>$("#filters").classList.toggle("show"));
+$("#sortSel").addEventListener("change", e=>{ S.sort = {k:e.target.value, dir:-1}; render(); });
+let _rw; addEventListener("resize", ()=>{ clearTimeout(_rw); _rw=setTimeout(render,150); });
 document.querySelectorAll("th[data-sort]").forEach(th=>th.addEventListener("click",()=>{
   const k=th.dataset.sort; S.sort = {k, dir: S.sort.k===k ? -S.sort.dir : -1}; render();
 }));
@@ -306,6 +387,7 @@ document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
 function toast(m, ms=3500){ const t=$("#toast"); t.textContent=m; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",ms); }
 async function api(path, body){
   const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
+  if(r.status===401){ location.href="/login"; throw new Error("signed out"); }
   const j = await r.json(); if(!r.ok) throw new Error(j.error||r.statusText); return j;
 }
 
@@ -337,19 +419,21 @@ async function refresh(){ await loadStatus(); await loadBoard(); }
 
 $("#sport").addEventListener("change", e=>{ S.sport=e.target.value; refresh(); });
 $("#btnOdds").addEventListener("click", async e=>{
+  const btn = e.currentTarget;
   if(!S.status.has_key){ toast("Add your Odds API key in Settings first."); return openSettings(); }
   const n = cfg.events, cost = n * S.status.markets.length * 3;
   if(!confirm(`Fetch live props for up to ${n} games? This uses about ${cost} Odds API credits.`)) return;
-  e.target.disabled = true; e.target.textContent = "Fetching…";
+  btn.disabled = true; btn.textContent = "Fetching…";
   try { const r = await api("/api/refresh-odds", {sport:S.sport, max_events:n}); toast(`Fetched ${r.events} games.`); await refresh(); }
   catch(err){ toast("Error: "+err.message, 7000); }
-  e.target.disabled = false; e.target.textContent = "Refresh odds";
+  btn.disabled = false; btn.textContent = "Refresh odds";
 });
 $("#btnLogs").addEventListener("click", async e=>{
-  e.target.disabled = true; e.target.textContent = "Downloading (≈1 min first time)…";
+  const btn = e.currentTarget;
+  btn.disabled = true; btn.textContent = "Downloading (≈1 min first time)…";
   try { const r = await api("/api/refresh-logs", {sport:S.sport}); toast(`Loaded ${r.rows} player-games.`); await refresh(); }
   catch(err){ toast("Error: "+err.message, 7000); }
-  e.target.disabled = false; e.target.textContent = "Update game logs";
+  btn.disabled = false; btn.innerHTML = 'Update<span class="hm"> game</span> logs';
 });
 function openSettings(){ $("#sBank").value=cfg.bank; $("#sKelly").value=cfg.kelly; $("#sMax").value=cfg.max; $("#sEvents").value=cfg.events; $("#sKey").value=""; $("#dlgSettings").showModal(); }
 $("#btnSettings").addEventListener("click", openSettings);

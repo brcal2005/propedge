@@ -11,6 +11,11 @@ import os
 import sys
 import threading
 import traceback
+import hashlib
+import hmac
+import secrets
+import time
+from urllib.parse import parse_qs as _pq
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -21,7 +26,9 @@ from .model import GameLogs
 from .odds import devig, parse_odds
 from .scanner import DEFAULT_SHARP, load_quotes
 
-HOME = os.path.join(os.path.expanduser("~"), ".propedge")
+from .paths import home as _home
+
+HOME = _home()
 CONFIG = os.path.join(HOME, "config.json")
 STATIC = os.path.join(os.path.dirname(__file__), "static", "index.html")
 
@@ -39,6 +46,39 @@ LABELS = {"player_points": "Points", "player_rebounds": "Rebounds", "player_assi
           "player_turnovers": "Turnovers"}
 
 _lock = threading.Lock()
+AUTH: dict = {"password": None, "secret": b""}
+COOKIE = "pe_session"
+SESSION_DAYS = 30
+
+LOGIN_HTML = """<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>propedge — sign in</title>
+<style>:root{--bg:#111214;--panel:#17181b;--line:#2a2c31;--text:#ececef;--muted:#9a9ca5;--accent:#5b7cfa}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+body{display:grid;place-items:center;padding:16px;box-sizing:border-box}
+form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;width:min(360px,100%);box-sizing:border-box}
+h1{font-size:20px;margin:0 0 4px}p{color:var(--muted);margin:0 0 18px;font-size:13px}
+input,button{width:100%;box-sizing:border-box;font:inherit;border-radius:9px;padding:11px 12px}
+input{background:#0d0e10;border:1px solid var(--line);color:var(--text);margin-bottom:12px}
+button{background:var(--accent);border:0;color:#fff;font-weight:600}.err{color:#ff8a8c;font-size:13px;margin:-4px 0 12px}</style></head>
+<body><form method="post" action="/login"><h1>Player Prop Edge</h1><p>Enter your dashboard password.</p>
+__ERR__<input type="password" name="password" autofocus autocomplete="current-password" placeholder="Password">
+<button>Sign in</button></form></body></html>"""
+
+
+def _sign(exp: int) -> str:
+    return hmac.new(AUTH["secret"], str(exp).encode(), hashlib.sha256).hexdigest()
+
+
+def _valid_cookie(raw: str | None) -> bool:
+    if not raw:
+        return False
+    for part in raw.split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == COOKIE and "." in v:
+            exp, sig = v.split(".", 1)
+            if exp.isdigit() and int(exp) > time.time() and hmac.compare_digest(sig, _sign(int(exp))):
+                return True
+    return False
 _logs_cache: dict = {}
 
 
@@ -199,6 +239,28 @@ class Handler(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(n) or b"{}")
 
+    def _authed(self) -> bool:
+        return not AUTH["password"] or _valid_cookie(self.headers.get("Cookie"))
+
+    def _redirect(self, to, cookie=None):
+        self.send_response(303)
+        self.send_header("Location", to)
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _secure(self) -> bool:
+        return self.headers.get("X-Forwarded-Proto", "") == "https"
+
+    def _same_origin(self) -> bool:
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        oh = urlparse(origin).hostname
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]")
+        return oh in ("localhost", "127.0.0.1") or oh == host
+
     def _guard(self, fn):
         try:
             self._send(200, fn())
@@ -212,6 +274,16 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         sport = q.get("sport", "basketball_nba")
+        if u.path == "/login":
+            return self._send(200, LOGIN_HTML.replace("__ERR__", "").encode(), "text/html; charset=utf-8")
+        if u.path == "/logout":
+            return self._redirect("/login", f"{COOKIE}=; Max-Age=0; Path=/")
+        if u.path == "/manifest.webmanifest":
+            return self._send(200, MANIFEST, "application/manifest+json")
+        if not self._authed():
+            if u.path.startswith("/api/"):
+                return self._send(401, {"error": "not signed in"})
+            return self._redirect("/login")
         if u.path in ("/", "/index.html"):
             with open(STATIC, "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
@@ -224,11 +296,23 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
     def do_POST(self):
-        # Only accept requests from this page (blocks other websites from poking a local server)
-        origin = self.headers.get("Origin")
-        if origin and urlparse(origin).hostname not in ("localhost", "127.0.0.1"):
+        # Only accept requests from this page (blocks other websites from poking the server)
+        if not self._same_origin():
             return self._send(403, {"error": "forbidden origin"})
         u = urlparse(self.path)
+        if u.path == "/login":
+            n = int(self.headers.get("Content-Length") or 0)
+            pw = _pq(self.rfile.read(n).decode()).get("password", [""])[0]
+            if AUTH["password"] and hmac.compare_digest(pw.encode(), AUTH["password"].encode()):
+                exp = int(time.time()) + SESSION_DAYS * 86400
+                ck = (f"{COOKIE}={exp}.{_sign(exp)}; Max-Age={SESSION_DAYS * 86400}; Path=/; HttpOnly; SameSite=Lax"
+                      + ("; Secure" if self._secure() else ""))
+                return self._redirect("/", ck)
+            time.sleep(1.0)  # slow down password guessing
+            err = '<div class="err">Wrong password.</div>'
+            return self._send(401, LOGIN_HTML.replace("__ERR__", err).encode(), "text/html; charset=utf-8")
+        if not self._authed():
+            return self._send(401, {"error": "not signed in"})
         b = self._body()
         sport = b.get("sport", "basketball_nba")
         if u.path == "/api/refresh-odds":
@@ -262,10 +346,41 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
 
-def serve(port: int = 8000, host: str = "127.0.0.1", open_browser: bool = True):
+MANIFEST = {"name": "Player Prop Edge", "short_name": "PropEdge", "start_url": "/", "display": "standalone",
+            "background_color": "#111214", "theme_color": "#111214"}
+
+
+def _lan_ip() -> str | None:
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("10.255.255.255", 1))  # no packets sent; just picks the outbound interface
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return None
+
+
+def serve(port: int = 8000, host: str = "127.0.0.1", open_browser: bool = True, password: str | None = None):
+    password = password or os.environ.get("PROPEDGE_PASSWORD")
+    local_only = host in ("127.0.0.1", "localhost", "::1")
+    if not local_only and not password:
+        raise SystemExit("Reachable from other devices, so a password is required:\n"
+                         "  propedge web --phone --password 'something-long'   (or set PROPEDGE_PASSWORD)")
+    if password:
+        cfg = load_config()
+        if not cfg.get("session_secret"):
+            cfg["session_secret"] = secrets.token_hex(32)
+            save_config(cfg)
+        AUTH.update(password=password, secret=bytes.fromhex(cfg["session_secret"]))
     srv = ThreadingHTTPServer((host, port), Handler)
     url = f"http://localhost:{port}"
     print(f"propedge dashboard running at {url}  (Ctrl+C to stop)", file=sys.stderr)
+    if not local_only:
+        ip = _lan_ip()
+        if ip:
+            print(f"On your phone (same Wi-Fi), open:  http://{ip}:{port}", file=sys.stderr)
     if open_browser:
         try:
             import webbrowser

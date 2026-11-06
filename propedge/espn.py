@@ -16,6 +16,8 @@ import sys
 import time
 import urllib.request
 
+from .paths import home as _home
+
 BASE = "https://site.api.espn.com/apis/site/v2/sports"
 LEAGUES = {"nba": "basketball/nba", "wnba": "basketball/wnba"}
 
@@ -88,7 +90,7 @@ def parse_boxscore(summary: dict, date: str) -> list[dict]:
 def fetch_logs(start: dt.date, end: dt.date, league: str = "nba",
                cache_dir: str | None = None, verbose: bool = True) -> list[dict]:
     path = LEAGUES[league]
-    cache_dir = cache_dir or os.path.join(os.path.expanduser("~"), ".propedge", "espn_cache", league)
+    cache_dir = cache_dir or os.path.join(_home(), "espn_cache", league)
     os.makedirs(cache_dir, exist_ok=True)
     rows, day, n_games, n_new = [], start, 0, 0
     while day <= end:
