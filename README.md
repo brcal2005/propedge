@@ -46,12 +46,19 @@ Output columns: **Price** (the book's price), **Fair** (no-vig fair odds), **Win
 ## Adding the model
 
 ```bash
-pip install nba_api pandas
-python scripts/fetch_nba_logs.py --season 2026-27 --out nba_logs.csv
+propedge fetch-logs --out nba_logs.csv          # this season's NBA box scores from ESPN (cached; reruns are quick)
 propedge scan --file today.json --logs nba_logs.csv --require-model   # market and model both agree
 propedge project --logs nba_logs.csv --player "Jayson Tatum" --market pra --line 40.5 \
   --over -115 --under -105 --opp "Miami Heat" --minutes 36
 ```
+
+`fetch-logs` uses ESPN's public (unofficial) API, which works from home and cloud machines.
+`scripts/fetch_nba_logs.py` (NBA.com via `nba_api`) is an alternative, but NBA.com blocks most cloud servers.
+
+**CHECK NEWS** in the scan output means the model and market projections differ by more than 25%.
+That's almost always injury, lineup or minutes news the box scores can't see yet. Treat it as a
+reason to read the injury report, not as an edge. Early in the season the model has only a handful
+of games per player, so trust it less and pass `--minutes` in `project` when you know the role changed.
 
 You can use game logs for any sport. The CSV needs one row per player-game with `player,date`
 and, optionally, `team,opponent,minutes`, plus stat columns. Each market's stat columns are listed

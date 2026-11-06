@@ -4,6 +4,7 @@
   propedge project   model projection & fair odds for one player prop
   propedge backtest  walk-forward test of the model vs historical lines
   propedge fair      de-vig a two-way price
+  propedge fetch-logs download NBA/WNBA game logs from ESPN
   propedge bet       track bets, closing line value and ROI
   propedge demo      generate synthetic data and run everything
 """
@@ -69,8 +70,12 @@ def cmd_scan(a):
     opps = [o for o in opps if o.ev >= a.min_ev and o.ev <= a.max_ev]
     if a.exact_lines:
         opps = [o for o in opps if o.exact_line]
+    def news_gap(o):
+        # Model and market far apart = the market likely knows something the box scores don't
+        # (injury, lineup change, minutes restriction). That's a warning, not an edge.
+        return o.model_mean is not None and abs(o.model_mean - o.market_mean) > a.max_gap * max(o.market_mean, 1.0)
     if a.require_model:
-        opps = [o for o in opps if o.model_ev is not None and o.model_ev > 0]
+        opps = [o for o in opps if o.model_ev is not None and o.model_ev > 0 and not news_gap(o)]
     opps = opps[: a.limit]
 
     rows = []
@@ -82,13 +87,16 @@ def cmd_scan(a):
                      q.book, fmt_american(q.price), f"{prob_to_american(fair_cond):+d}",
                      f"{o.fair_p * 100:.1f}%", pct(o.ev), f"${stake:,.0f}",
                      f"{o.market_mean:.1f}", "" if o.model_mean is None else f"{o.model_mean:.1f}",
-                     pct(o.model_ev), "Y" if o.sharp_used else "", "" if o.exact_line else "~", q.event[:28]])
+                     pct(o.model_ev), "Y" if o.sharp_used else "", "" if o.exact_line else "~",
+                     "CHECK NEWS" if news_gap(o) else "", q.event[:28]])
     hdr = ["Player", "Mkt", "Bet", "Book", "Price", "Fair", "WinP", "EV", "Stake",
-           "MktProj", "ModelProj", "ModelEV", "Sharp", "Alt", "Event"]
+           "MktProj", "ModelProj", "ModelEV", "Sharp", "Alt", "Note", "Event"]
     print(table(rows, hdr) if rows else f"No bets with EV >= {a.min_ev:.1%}.")
     print(f"\n{len(quotes)} quotes scanned. Stake = {a.kelly:g} Kelly on ${a.bankroll:,.0f}, "
           f"capped at {a.max_stake:.0%}. Fair = no-vig sharp price when available (Sharp=Y), else consensus.\n"
-          f"Alt=~ means the sharp book posted a different line and the fair price was translated — less reliable.")
+          f"Alt=~ means the sharp book posted a different line and the fair price was translated — less reliable."
+          + (f"\nCHECK NEWS = model and market projections differ by >{a.max_gap:.0%}: usually injury/lineup news "
+             "the box scores can't see. Not an edge until you know why." if a.logs else ""))
     if a.csv:
         with open(a.csv, "w", newline="") as f:
             w = csv.writer(f); w.writerow(hdr); w.writerows(rows)
@@ -218,11 +226,27 @@ def cmd_demo(a):
     print("\n" + "=" * 78 + "\n2) SCAN — today's slate: soft books vs no-vig sharp price\n" + "=" * 78)
     cmd_scan(argparse.Namespace(file=paths["quotes"], logs=paths["logs"], sport="basketball_nba",
                                 sharp=None, min_books=2, devig="power", sharp_only=False, books=None,
-                                all_prices=False, exact_lines=False, min_ev=0.03, max_ev=0.3, require_model=False,
+                                all_prices=False, exact_lines=False, max_gap=0.25, min_ev=0.03, max_ev=0.3, require_model=False,
                                 limit=15, kelly=0.25, max_stake=0.03, bankroll=1000, csv=None))
     print("\nTry next:")
     print(f"  python -m propedge project --logs {paths['logs']} --player \"<name from above>\" --market pra")
     print(f"  python -m propedge scan --file {paths['quotes']} --logs {paths['logs']} --require-model")
+
+
+# ---------------------------------------------------------------- fetch-logs
+def cmd_fetch_logs(a):
+    import datetime as dt
+    from .espn import fetch_logs, write_csv
+    today = dt.date.today()
+    if a.start:
+        start = dt.date.fromisoformat(a.start)
+    else:  # NBA season starts in October; WNBA in May
+        y = today.year if today.month >= (10 if a.league == "nba" else 5) else today.year - 1
+        start = dt.date(y, 10 if a.league == "nba" else 5, 1)
+    end = dt.date.fromisoformat(a.end) if a.end else today - dt.timedelta(days=1)
+    rows = fetch_logs(start, end, a.league)
+    write_csv(rows, a.out)
+    print(f"wrote {len(rows)} player-games ({len({r['player'] for r in rows})} players) to {a.out}")
 
 
 def main(argv=None):
@@ -241,6 +265,7 @@ def main(argv=None):
     s.add_argument("--save", help="save fetched raw JSON for re-use")
     s.add_argument("--logs", help="game log CSV to add model projections")
     s.add_argument("--require-model", action="store_true", help="only show bets the model also likes")
+    s.add_argument("--max-gap", type=float, default=0.25, help="flag model/market projection gaps above this fraction")
     s.add_argument("--exact-lines", action="store_true", help="skip bets whose fair price was translated from a different line")
     s.add_argument("--books", help="only show bets at these books (the ones you have accounts at)")
     s.add_argument("--sharp", help=f"comma list of sharp books (default {','.join(sorted(DEFAULT_SHARP))})")
@@ -303,6 +328,13 @@ def main(argv=None):
     x = bs.add_parser("list"); x.add_argument("--open", action="store_true")
     bs.add_parser("report")
     s.set_defaults(func=cmd_bet)
+
+    s = sub.add_parser("fetch-logs", help="download player game logs from ESPN")
+    s.add_argument("--league", default="nba", choices=["nba", "wnba"])
+    s.add_argument("--start", help="YYYY-MM-DD (default: start of the current season)")
+    s.add_argument("--end", help="YYYY-MM-DD (default: yesterday)")
+    s.add_argument("--out", default="nba_logs.csv")
+    s.set_defaults(func=cmd_fetch_logs)
 
     s = sub.add_parser("demo", help="generate synthetic data and run backtest + scan")
     s.add_argument("--dir", default="demo_data")
