@@ -4,3 +4,4 @@ __pycache__/
 demo_data/
 *.db
 .env
+*.png
